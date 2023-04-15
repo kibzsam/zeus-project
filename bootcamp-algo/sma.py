@@ -57,17 +57,19 @@ def open_positions(symbol=symbol):
         openpos_bool = False
         long = None
     print(
-        f'open_positions... | openpos_bool {openpos_bool} | openpos_size{openpos_size} | long {long} |index_pos{index_pos}')
+        f'open_positions... | openpos_bool {openpos_bool} | openpos_size{openpos_size} | long {long} | index_pos{index_pos}')
     return open_positions, openpos_bool, openpos_size, long, index_pos
 
     # Kill Switch : This will be a function that you can call any moment and it will take you out of the position
 
+# This is the ask and bid for a particular symbol: We can use this function to get the order book of a symbol and probably optimize it in future to determine buys or sell based on the order book.
+
 
 def ask_bid(symbol=symbol):
-    ob = phemex.fetch_order_book(symbol)
+    order_book = phemex.fetch_order_book(symbol)
     # print(ob)
-    bid = ob['bids'][0][0]
-    ask = ob['asks'][0][0]
+    bid = order_book['bids'][0][0]
+    ask = order_book['asks'][0][0]
 
 # f literal
     print(f'this is the ask for {symbol}{ask}')
@@ -215,3 +217,53 @@ def size_kill():
     else:
         print(
             f'size kill check: current position cost is {pos_cost} we are gucci')
+
+
+# Define the timeframe  to trade the asset
+# Define the bar limit:Number of bars to check the limit
+# Define the sma ie 20 sma, 200 sma etc
+
+timeframe = '15m'
+limit = 100
+sma = 20
+
+
+def df_sma(symbol=symbol, timeframe=timeframe, limit=limit, sma=sma):
+    print('starting indis...')
+    bars = phemex.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
+    # print(bars)
+    df_sma = pd.DataFrame(
+        bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+    df_sma['timestamp'] = pd.to_datetime(df_sma['timestamp'], unit='ms')
+
+    # DAILY SMA - 20 day
+    df_sma[f'sma{sma}_{timeframe}'] = df_sma.close.rolling(sma).mean()
+
+    # if bid <  the 20 day sma then = BEARISH, if bid > 20 day sma = BULLISH
+
+    bid = ask_bid(symbol)[1]
+
+    # if sma > bid = SELL, if sma < bid = BUY
+    df_sma.loc[df_sma[f'sma{sma}_{timeframe}'] > bid, 'sig'] = 'SELL'
+    df_sma.loc[df_sma[f'sma{sma}_{timeframe}'] < bid, 'sig'] = 'BUY'
+
+    df_sma['support'] = df_sma[:-2]['close'].min()
+    df_sma['resistance'] = df_sma[:-2]['close'].max()
+
+    df_sma['PC'] = df_sma['close'].shift(1)
+
+    # last close Bigger than Previous close
+    # going to add this to order to ensure we only open
+    # order on reversal confirmation
+    df_sma.loc[df_sma['close'] > df_sma['PC'], 'lcBpc'] = True
+    # 2.981       > 2.966 == True
+    df_sma.loc[df_sma['close'] < df_sma['PC'], 'lcBpc'] = False
+    # 2.980       < 2.981 == False
+    # 2.966       < 2.967 == False
+
+    print(df_sma)
+
+    return df_sma
+
+
+df_sma()
