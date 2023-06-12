@@ -70,10 +70,10 @@ def ask_bid(symbol=symbol):
     # print(ob)
     bid = order_book['bids'][0][0]
     ask = order_book['asks'][0][0]
+    bid_liq = order_book['bids'][0][1]
+    ask_liq = order_book['asks'][0][1]
 
-# f literal
-    print(f'this is the ask for {symbol}{ask}')
-    return ask, bid
+    return ask, bid, order_book, bid_liq, ask_liq
 
 
 def kill_switch(symbol=symbol):
@@ -222,14 +222,12 @@ def size_kill():
 # Define the sma ie 20 sma, 200 sma etc
 
 def df_sma(symbol, timeframe, limit, sma):
-    print('starting indis...')
-    bars = phemex.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
-    # print(bars)
+    bars = phemex.fetch_ohlcv(symbol=symbol, timeframe=timeframe, limit=limit)
     df_sma = pd.DataFrame(
         bars, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
     df_sma['timestamp'] = pd.to_datetime(df_sma['timestamp'], unit='ms')
 
-    # DAILY SMA - 20 day
+    # DAILY SMA - eg 20 day sma
     df_sma[f'sma{sma}_{timeframe}'] = df_sma.close.rolling(sma).mean()
 
     # if bid <  the 20 day sma then = BEARISH, if bid > 20 day sma = BULLISH
@@ -253,7 +251,31 @@ def df_sma(symbol, timeframe, limit, sma):
     df_sma.loc[df_sma['close'] < df_sma['PC'], 'lcBpc'] = False
     # 2.980       < 2.981 == False
     # 2.966       < 2.967 == False
-
-    print(df_sma)
-
     return df_sma
+
+
+def position_info():
+    '''
+    This function gets the position info we need to trade. It switches between the positions 0 and 1 on the output
+    '''
+    params = {'type': 'swap', 'code': 'USD'}
+
+    balance = phemex.fetch_balance(params=params)
+    open_positions = balance['info']['data']['positions']
+    pos_df = pd.DataFrame.from_dict(open_positions)
+    print(pos_df)
+    pos_cost = pos_df.loc[pos_df['symbol'] == symbol, 'posCost'].values[0]
+    side = pos_df.loc[pos_df['symbol'] == symbol, 'side'].values[0]
+    pos_cost = float(pos_cost)
+    pos_size = pos_df.loc[pos_df['symbol'] == symbol, 'size'].values[0]
+    size = float(pos_size)
+    entryPrice = pos_df.loc[pos_df['symbol']
+                            == symbol, 'avgEntryPrice'].values[0]
+    entry_price = float(entryPrice)
+    leverage = pos_df.loc[pos_df['symbol'] == symbol, 'leverage'].values[0]
+    leverage = float(leverage)
+
+    # print(
+    #     f'symbol:{symbol} side: {side} leverage: {leverage} size{size} entry:{entry_price}')
+    # post info, side,size, etry price and leverage
+    return pos_cost, side, size, entry_price, leverage
