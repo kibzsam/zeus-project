@@ -127,17 +127,67 @@ def supply_demand(sd_limit=sd_limit, sd_sma=sd_sma, symbol=symbol):
 
 
 def sd_bot():
-    sd_df = supply_demand(symbol='uBTCUSD')
-    print(sd_df)
+    # get the supply and demand zones for all timeframes
+    sd_df = supply_demand()
+    # if i want the 4 hour supply zone and demand zone
+    sz_4h = sd_df['sz_4h']
+    sz_4h_0 = sz_4h.iloc[0]
+    sz_4h_1 = sz_4h.iloc[-1]
+    dz_4h = sd_df['dz_4h']
+    dz_4h_0 = dz_4h.iloc[0]
+    dz_4h_1 = dz_4h.iloc[-1]
+    # 15min
+    sz_15m = sd_df['sz_15m']
+    sz_15m_0 = sz_15m.iloc[0]
+    sz_15m_1 = sz_15m.iloc[-1]
+    dz_15m = sd_df['dz_15m']
+    dz_15m_0 = dz_15m.iloc[0]
+    dz_15m_1 = dz_15m.iloc[-1]
+    # where do we bid and ask and when
+    # if over the 20min sma we are looking for longs
+    # if under the 20min sma we are looking foe shorts
+    df_sma = u.df_sma(symbol, '4h', 200, 20)
+    sig = df_sma.iloc[-1]['sig']
+    # if its a buy buy at the higher or demand zone
+    buy_1_15m = max(dz_15m_0, dz_15m_1)
+    buy_2_15m = (dz_15m_0 + dz_15m_1)/2
+    # if its a sell at the lower or supply zone
+    sell_1_15m = min(sz_15m_0, sz_15m_1)
+    sell_2_15m = (sz_15m_0 + sz_15m_1)/2
+    pos_size = u.position_info(symbol)[2]
+    in_pos = False
+    if pos_size > 0:
+        in_pos = True
+    else:
+        in_pos = False
+    if in_pos == False:
+        if sig == 'BUY':
+            phemex.cancel_all_orders(symbol)
+            phemex.create_limit_buy_order(symbol, size, buy_1_15m)
+            phemex.create_limit_buy_order(symbol, size, buy_2_15m)
+            print('created the two orders sleeping this function for 5min')
+            time.sleep(300)
+        elif sig == 'SELL':
+            phemex.cancel_all_orders(symbol)
+            phemex.create_limit_sell_order(symbol, size, sell_1_15m)
+            phemex.create_limit_sell_order(symbol, size, sell_2_15m)
+            print('created the two orders sleeping this function for 5min')
+        else:
+            print("we didn't get a buy or sell signal.... look into this..")
+    else:
+        print('We are alredy in position.. checking pnl and closing positions')
 
 
-schedule.every(5).seconds.do(sd_bot)
+sd_bot()
 
-# Continously Run this bot
-while True:
-    try:
-        schedule.run_pending()
-        time.sleep(15)
-    except:
-        print('error...... sleeping 30 sec and retrying')
-        time.sleep(30)
+
+# schedule.every(5).seconds.do(sd_bot)
+
+# # Continously Run this bot
+# while True:
+#     try:
+#         schedule.run_pending()
+#         time.sleep(15)
+#     except:
+#         print('error...... sleeping 30 sec and retrying')
+#         time.sleep(30)
