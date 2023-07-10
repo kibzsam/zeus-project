@@ -16,53 +16,54 @@ balance = phemex.fetch_balance()
 symbol = 'uBTCUSD'
 size = 1
 params = {'timeInForce': 'PostOnly'}
+vol_decimal = .4
 
 
 # making an order
 # buyOrder = phemex.create_limit_buy_order(symbol, size, bid, params)
 # phemex.cancel_all_orders(symbol)
 # open positions
+
 def open_positions(symbol=symbol):
     # what is the position index for that symbol?
     if symbol == 'uBTCUSD':
-        index_pos = 4
-    elif symbol == 'APEUSD':
-        index_pos = 2
-    elif symbol == 'ETHUSD':
         index_pos = 3
-    elif symbol == 'DOGEUSD':
+    elif symbol == 'APEUSD':
         index_pos = 1
-    elif symbol == 'u100000SHIBUSD':
+    elif symbol == 'ETHUSD':
+        index_pos = 2
+    elif symbol == 'DOGEUSD':
         index_pos = 0
     else:
-        index_pos = None
+        return [], False, None, None
 
     params = {'type': 'swap', 'code': 'USD'}
-    phemex_bal = phemex.fetch_balance(params=params)
-    open_positions = phemex_bal['info']['data']['positions']
+    balance = phemex.fetch_balance(params=params)
+    open_positions = balance['info']['data']['positions']
 
-# dictionaries
-    openpos_side = open_positions[index_pos]['side']
-    openpos_size = open_positions[index_pos]['size']
-    # print(open_positions)
+    if index_pos < len(open_positions):
+        openpos_side = open_positions[index_pos]['side']
+        openpos_size = open_positions[index_pos]['size']
+        print(open)
+    else:
+        return [], False, None, None
 
-# if statements
-    if openpos_side == ('Buy'):
+    if openpos_side == 'Buy':
         openpos_bool = True
         long = True
-    elif openpos_side == ('Sell'):
+    elif openpos_side == 'Sell':
         openpos_bool = True
         long = False
     else:
         openpos_bool = False
         long = None
-    print(
-        f'open_positions... | openpos_bool {openpos_bool} | openpos_size{openpos_size} | long {long} | index_pos{index_pos}')
-    return open_positions, openpos_bool, openpos_size, long, index_pos
 
+    return open_positions, openpos_bool, openpos_size, long
     # Kill Switch : This will be a function that you can call any moment and it will take you out of the position
 
+
 # This is the ask and bid for a particular symbol: We can use this function to get the order book of a symbol and probably optimize it in future to determine buys or sell based on the order book.
+open_positions()
 
 
 def ask_bid(symbol=symbol):
@@ -116,6 +117,91 @@ def kill_switch(symbol=symbol):
             print('++++++ SOMETHING I DIDNT EXCEPT IN KILL SWITCH FUNCTION')
         openposi = open_positions(symbol)[1]
 
+
+# use order book function to determine when to exit a position
+
+def ob():
+    print('fetching order book data')
+    temp_df = pd.DataFrame()
+    df = pd.DataFrame()
+    ob = phemex.fetch_order_book(symbol)
+    bids = ob['bids']
+    asks = ob['asks']
+    bid_vol_list = []
+    ask_vol_list = []
+
+    # If SELL vol > BUY vol AND profit target hit, exit
+    # Get last 1 min of volume.. and if sell > buy vol do x
+    for x in range(11):
+        for set in bids:
+            # price = set[0]
+            vol = set[1]
+            bid_vol_list.append(vol)
+            sum_bid_vol = sum(bid_vol_list)
+            temp_df['bid_vol'] = [sum_bid_vol]
+        for set in asks:
+            # price = set[0]
+            vol = set[1]
+            ask_vol_list.append(vol)
+            sum_ask_vol = sum(ask_vol_list)
+            temp_df['ask_vol'] = [sum_ask_vol]
+        time.sleep(5)
+        df = df._append(temp_df)
+        print(df)
+        print(' ')
+        print('-------')
+        print(' ')
+    print('done collecting volume data for bids and asks')
+    print('calculating the sums.....')
+    total_bid_vol = df['bid_vol'].sum()
+    total_ask_vol = df['ask_vol'].sum()
+    print(
+        f'For the last 1min this is the total Bid Vol: {total_bid_vol} | ask vol: {total_ask_vol} ')
+
+    if total_bid_vol > total_ask_vol:
+        control_desc = total_ask_vol/total_bid_vol
+        print(f'Bulls are in control {control_desc}....')
+        # if bulls are in control, use regular target
+        bullish = True
+
+    else:
+        control_desc = total_bid_vol/total_ask_vol
+        print(f'Bears are in control {control_desc}....')
+        # if bulls are in control, use regular target
+        bullish = False
+        # .2 , .36 , .2, .18, .4, .74, .24, .76
+    # if target is hit, check book vol from order book
+    # if bool vol is under .4 stay in position slee?
+    # need to check if long or short
+    open_pos = open_positions()
+    openpos_tf = open_pos[1]
+    long = open_pos[3]
+    print(f'openpos_tf: {openpos_tf} || long: {long}')
+
+    if openpos_tf == True:
+        if long == True:
+            print("We are in a long positions...")
+            if control_desc < vol_decimal:
+                vol_under_decimal = True
+            else:
+                print('Volume is not under decimal so setting vol_under_dec to False')
+                vol_under_decimal = False
+        else:
+            print('We are in a short postion...')
+            if control_desc < vol_decimal:
+                vol_under_decimal = True
+            else:
+                print('Volume is not under decimal so setting vol_under_dec to False')
+                vol_under_decimal = False
+    else:
+        print('We are not in positions... ')
+        # If vol_under_decimal is False and target is hit the exit the trade/position
+    print(vol_under_decimal)
+
+    return vol_under_decimal
+
+
+# ob()
 
 # pnl close
 # pnl_close() [0] pnlclose and [1] in_pos [2]size [3]long TF
