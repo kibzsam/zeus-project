@@ -18,7 +18,8 @@ params = {'timeInForce': 'PostOnly'}
 timeframe = '15m'
 sd_limit = 200
 sd_sma = 20
-
+target = 15
+max_loss=7
 
 def supply_demand(sd_limit=sd_limit, sd_sma=sd_sma, symbol=symbol):
     # Get the OHCLV data
@@ -125,6 +126,7 @@ def supply_demand(sd_limit=sd_limit, sd_sma=sd_sma, symbol=symbol):
 
 
 def sd_bot():
+    # sourcery skip: assign-if-exp, boolean-if-exp-identity, move-assign, remove-unnecessary-cast, simplify-boolean-comparison, switch
     # get the supply and demand zones for all timeframes
     sd_df = supply_demand()
     print(sd_df)
@@ -174,19 +176,20 @@ def sd_bot():
         else:
             print("we didn't get a buy or sell signal.... look into this..")
     else:
-        print('We are alredy in position.. checking pnl and closing positions')
+        print('We are already in position.. checking pnl and closing positions')
+        u.pnl_close(symbol,target,max_loss) # this will close position
 
 
 sd_bot()
 
 
-# schedule.every(5).seconds.do(sd_bot)
+schedule.every(5).seconds.do(sd_bot)
 
-# # Continously Run this bot
-# while True:
-#     try:
-#         schedule.run_pending()
-#         time.sleep(15)
-#     except:
-#         print('error...... sleeping 30 sec and retrying')
-#         time.sleep(30)
+# Continously Run this bot
+while True:
+    try:
+        schedule.run_pending()
+        time.sleep(15)
+    except Exception:
+        print('error...... sleeping 30 sec and retrying')
+        time.sleep(30)
