@@ -18,7 +18,8 @@ params = {'timeInForce': 'PostOnly'}
 timeframe = '15m'
 sd_limit = 200
 sd_sma = 20
-
+target = 15
+max_loss=7
 
 def supply_demand(sd_limit=sd_limit, sd_sma=sd_sma, symbol=symbol):
     # Get the OHCLV data
@@ -70,7 +71,6 @@ def supply_demand(sd_limit=sd_limit, sd_sma=sd_sma, symbol=symbol):
     sd_df['dz_30m'] = [support_low_30m, support_30m]
     sd_df['sz_30m'] = [resistance_high_30m, resistance_30m]
     time.sleep(1)
-
     # 1hr
     df_1h = u.df_sma(symbol, '1h', sd_limit, sd_sma)
     # get support and resistance
@@ -85,7 +85,6 @@ def supply_demand(sd_limit=sd_limit, sd_sma=sd_sma, symbol=symbol):
     sd_df['dz_1h'] = [support_low_1h, support_1h]
     sd_df['sz_1h'] = [resistance_high_1h, resistance_1h]
     time.sleep(1)
-
     # 4hr
     df_4h = u.df_sma(symbol, '4h', sd_limit, sd_sma)
     # get support and resistance
@@ -100,7 +99,6 @@ def supply_demand(sd_limit=sd_limit, sd_sma=sd_sma, symbol=symbol):
     sd_df['dz_4h'] = [support_low_4h, support_4h]
     sd_df['sz_4h'] = [resistance_high_4h, resistance_4h]
     time.sleep(1)
-
     # Daily
     df_1d = u.df_sma(symbol, '1d', sd_limit, sd_sma)
     # get support and resistance
@@ -114,6 +112,7 @@ def supply_demand(sd_limit=sd_limit, sd_sma=sd_sma, symbol=symbol):
     # get demand and supply zone 1d
     sd_df['dz_1d'] = [support_low_1d, support_1d]
     sd_df['sz_1d'] = [resistance_high_1d, resistance_1d]
+
     return sd_df
 
     # RETURN SUPPLY AND DEMAND ZONE PER TIME FRAME
@@ -127,8 +126,10 @@ def supply_demand(sd_limit=sd_limit, sd_sma=sd_sma, symbol=symbol):
 
 
 def sd_bot():
+    # sourcery skip: assign-if-exp, boolean-if-exp-identity, move-assign, remove-unnecessary-cast, simplify-boolean-comparison, switch
     # get the supply and demand zones for all timeframes
     sd_df = supply_demand()
+    print(sd_df)
     # if i want the 4 hour supply zone and demand zone
     sz_4h = sd_df['sz_4h']
     sz_4h_0 = sz_4h.iloc[0]
@@ -162,7 +163,7 @@ def sd_bot():
         in_pos = False
     if in_pos == False:
         if sig == 'BUY':
-            phemex.cancel_all_orders(symbol)
+            u.pnl_close()
             phemex.create_limit_buy_order(symbol, size, buy_1_15m)
             phemex.create_limit_buy_order(symbol, size, buy_2_15m)
             print('created the two orders sleeping this function for 5min')
@@ -175,19 +176,20 @@ def sd_bot():
         else:
             print("we didn't get a buy or sell signal.... look into this..")
     else:
-        print('We are alredy in position.. checking pnl and closing positions')
+        print('We are already in position.. checking pnl and closing positions')
+        u.pnl_close(symbol,target,max_loss) # this will close position
 
 
 sd_bot()
 
 
-# schedule.every(5).seconds.do(sd_bot)
+schedule.every(5).seconds.do(sd_bot)
 
-# # Continously Run this bot
-# while True:
-#     try:
-#         schedule.run_pending()
-#         time.sleep(15)
-#     except:
-#         print('error...... sleeping 30 sec and retrying')
-#         time.sleep(30)
+# Continously Run this bot
+while True:
+    try:
+        schedule.run_pending()
+        time.sleep(15)
+    except Exception:
+        print('error...... sleeping 30 sec and retrying')
+        time.sleep(30)
