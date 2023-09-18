@@ -155,7 +155,7 @@ def sd_bot():
     # if its a sell at the lower or supply zone
     sell_1_15m = min(sz_15m_0, sz_15m_1)
     sell_2_15m = (sz_15m_0 + sz_15m_1)/2
-    pos_size = u.position_info(symbol)[2]
+    pos_size = u.position_info()[2]
     in_pos = False
     if pos_size > 0:
         in_pos = True
