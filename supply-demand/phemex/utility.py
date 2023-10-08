@@ -47,7 +47,7 @@ def open_positions(symbol=symbol):
 
     openpos_side = open_positions[index_pos]['side']
     openpos_size = open_positions[index_pos]['size']
-    print(open)
+
     if openpos_side == 'Buy':
         openpos_bool = True
         long = True
@@ -58,7 +58,7 @@ def open_positions(symbol=symbol):
         openpos_bool = False
         long = None
 
-    return open_positions, openpos_bool, openpos_size, long
+    return open_positions, openpos_bool, openpos_size, long,index_pos
     # Kill Switch : This will be a function that you can call any moment and it will take you out of the position
 
 
