@@ -18,7 +18,7 @@ def get_supply_demand_zones(data):
     highest_high = max(highs[:-1])
     lowest_low = min(lows[:-1])
     current_close = closes[-1]
-
+    
     if current_close > highest_high:
         supply_zone = highest_high
         demand_zone = lowest_low

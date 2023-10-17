@@ -163,7 +163,7 @@ def sd_bot():
         in_pos = False
     if in_pos == False:
         if sig == 'BUY':
-            u.pnl_close()
+            u.pnl_close(symbol,target,max_loss) #
             phemex.create_limit_buy_order(symbol, size, buy_1_15m)
             phemex.create_limit_buy_order(symbol, size, buy_2_15m)
             print('created the two orders sleeping this function for 5min')

@@ -27,14 +27,13 @@ sma = 20
 
 def open_positions(symbol=symbol):
     # what is the position index for that symbol?
-    if symbol == 'APEUSD':
-        index_pos = 1
-    elif symbol == 'DOGEUSD':
+
+    if symbol == 'DOGEUSD':
         index_pos = 0
     elif symbol == 'ETHUSD':
         index_pos = 2
     elif symbol == 'uBTCUSD':
-        index_pos = 3
+        index_pos = 1
     else:
         return [], False, None, None
 
@@ -43,8 +42,8 @@ def open_positions(symbol=symbol):
     open_positions = balance['info']['data']['positions']
 
     if index_pos >= len(open_positions):
-        return [], False, None, None
-
+        return [], False, None, None,
+    
     openpos_side = open_positions[index_pos]['side']
     openpos_size = open_positions[index_pos]['size']
 
@@ -58,7 +57,7 @@ def open_positions(symbol=symbol):
         openpos_bool = False
         long = None
 
-    return open_positions, openpos_bool, openpos_size, long,index_pos
+    return open_positions, openpos_bool, openpos_size, long, index_pos
     # Kill Switch : This will be a function that you can call any moment and it will take you out of the position
 
 
